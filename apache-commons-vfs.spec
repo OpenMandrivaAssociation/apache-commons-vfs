@@ -1,9 +1,9 @@
-%_javapackages_macros
+%{?_javapackages_macros:%_javapackages_macros}
 %global base_name vfs
 %global short_name commons-%{base_name}
 Name:          apache-commons-vfs
 Version:       2.0
-Release:       11.0%{?dist}
+Release:       11.1%{?dist}
 Summary:       Commons Virtual File System
 License:       ASL 2.0
 Url:           http://commons.apache.org/%{base_name}/
