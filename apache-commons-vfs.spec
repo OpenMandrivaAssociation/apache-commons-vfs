@@ -3,7 +3,7 @@
 %global short_name commons-%{base_name}
 Name:          apache-commons-vfs
 Version:       2.0
-Release:       11.1%{?dist}
+Release:       12
 Summary:       Commons Virtual File System
 License:       ASL 2.0
 Url:           http://commons.apache.org/%{base_name}/
@@ -123,6 +123,8 @@ org.apache.ant" core
 rm -rf core/src/main/java/org/apache/commons/vfs2/provider/webdav
 rm -rf core/src/test/java/org/apache/commons/vfs2/provider/webdav
 sed -i 's|"webdav",||' core/src/test/java/org/apache/commons/vfs2/util/DelegatingFileSystemOptionsBuilderTest.java
+
+rm -r core/src/test/java/org/apache/commons/vfs2/provider/ram/test/CustomRamProviderTest.java
 
 # not really needed
 %pom_remove_plugin :maven-checkstyle-plugin
