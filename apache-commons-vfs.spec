@@ -3,7 +3,7 @@
 %global short_name commons-%{base_name}
 Name:          apache-commons-vfs
 Version:       2.0
-Release:       12
+Release:       13
 Summary:       Commons Virtual File System
 License:       ASL 2.0
 Url:           http://commons.apache.org/%{base_name}/
