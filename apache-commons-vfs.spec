@@ -3,7 +3,8 @@
 %global short_name commons-%{base_name}
 Name:          apache-commons-vfs
 Version:       2.0
-Release:       13
+Release:       14.1
+Group:		Development/Java
 Summary:       Commons Virtual File System
 License:       ASL 2.0
 Url:           http://commons.apache.org/%{base_name}/
@@ -17,7 +18,7 @@ BuildRequires: mvn(commons-logging:commons-logging)
 BuildRequires: mvn(commons-net:commons-net)
 BuildRequires: mvn(org.apache.ant:ant)
 BuildRequires: mvn(org.apache.commons:commons-compress)
-BuildRequires: mvn(org.apache.commons:commons-parent)
+BuildRequires: mvn(org.apache.commons:commons-parent:pom:)
 BuildRequires: mvn(org.apache.maven.plugins:maven-antrun-plugin)
 BuildRequires: mvn(org.jdom:jdom)
 
@@ -146,6 +147,9 @@ rm -r core/src/test/java/org/apache/commons/vfs2/provider/ram/test/CustomRamProv
 
 # main package wins parent POM
 %mvn_package ":commons-vfs2-project" commons-vfs2
+
+# cb - seems to break the build with xmvn
+find . -name site.xml -exec rm -rf {} \;
 
 %build
 %mvn_build -s
