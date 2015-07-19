@@ -3,7 +3,7 @@
 %global short_name commons-%{base_name}
 Name:          apache-commons-vfs
 Version:       2.0
-Release:       14.1
+Release:       14.2
 Group:		Development/Java
 Summary:       Commons Virtual File System
 License:       ASL 2.0
