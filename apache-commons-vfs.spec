@@ -7,7 +7,7 @@ Release:       14.3
 Group:		Development/Java
 Summary:       Commons Virtual File System
 License:       ASL 2.0
-Url:           http://commons.apache.org/%{base_name}/
+Url:           https://commons.apache.org/%{base_name}/
 Source0:       http://www.apache.org/dist/commons/%{base_name}/source/%{short_name}-%{version}-src.tar.gz
 
 BuildRequires: maven-local
