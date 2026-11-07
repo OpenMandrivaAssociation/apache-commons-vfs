@@ -1,212 +1,204 @@
-%{?_javapackages_macros:%_javapackages_macros}
-%global base_name vfs
-%global short_name commons-%{base_name}
-Name:          apache-commons-vfs
-Version:       2.0
-Release:       14.3
+Name:		apache-commons-vfs
+Version:	2.10.0
+Release:	1
+Summary:	Virtual filesystem for local and remote files
 Group:		Development/Java
-Summary:       Commons Virtual File System
-License:       ASL 2.0
-Url:           https://commons.apache.org/%{base_name}/
-Source0:       http://www.apache.org/dist/commons/%{base_name}/source/%{short_name}-%{version}-src.tar.gz
+License:	ASL 2.0
+URL:		https://commons.apache.org/proper/commons-vfs/
+Source0:	https://github.com/apache/commons-vfs/archive/refs/tags/rel/commons-vfs-%{version}.tar.gz#/commons-vfs-%{version}.tar.gz
 
-BuildRequires: maven-local
-BuildRequires: mvn(com.jcraft:jsch)
-BuildRequires: mvn(commons-collections:commons-collections)
-BuildRequires: mvn(commons-httpclient:commons-httpclient)
-BuildRequires: mvn(commons-logging:commons-logging)
-BuildRequires: mvn(commons-net:commons-net)
-BuildRequires: mvn(org.apache.ant:ant)
-BuildRequires: mvn(org.apache.commons:commons-compress)
-BuildRequires: mvn(org.apache.commons:commons-parent:pom:)
-BuildRequires: mvn(org.apache.maven.plugins:maven-antrun-plugin)
-BuildRequires: mvn(org.jdom:jdom)
+BuildArch:	noarch
+BuildRequires:	python
+# Literal, so the first rpmbuild -bs records them before sysjar is installed.
+BuildRequires:	maven
+BuildRequires:	java-current-devel
+BuildRequires:	mvn(commons-logging:commons-logging)
+BuildRequires:	mvn(org.apache.commons:commons-lang3)
+BuildRequires:	mvn(commons-io:commons-io)
+BuildRequires:	mvn(org.apache.commons:commons-collections4)
+# Optional at runtime. builddep skips optional dependencies, and the kept providers import them.
+BuildRequires:	mvn(commons-net:commons-net)
+BuildRequires:	mvn(org.apache.commons:commons-compress)
+BuildRequires:	mvn(org.apache.httpcomponents:httpclient)
+BuildSystem:	maven
+BuildOption(install):	--file-name commons-vfs2 --link %{name} --link %{name}2 --alias org.apache.commons:commons-vfs --alias commons-vfs:commons-vfs
 
-# test deps
-BuildRequires: mvn(junit:junit)
-
-BuildArch:     noarch
-Provides:      %{name}2 = %{version}-%{release}
+Provides:	%{name}2 = %{version}-%{release}
+Obsoletes:	%{name}-javadoc < %{version}-%{release}
+Obsoletes:	%{name}-examples < %{version}-%{release}
+Obsoletes:	%{name}-ant < %{version}-%{release}
 
 %description
-Commons VFS provides a single API for accessing various
-different file systems. It presents a uniform view of the
-files from various different sources, such as the files on
-local disk, on an HTTP server, or inside a Zip archive.
-Some of the features of Commons VFS are:
-* A single consistent API for accessing files of different
- types.
-* Support for numerous file system types.
-* Caching of file information. Caches information in-JVM,
- and optionally can cache remote file information on the
- local file system.
-* Event delivery.
-* Support for logical file systems made up of files from
- various different file systems.
-* Utilities for integrating Commons VFS into applications,
- such as a VFS-aware ClassLoader and URLStreamHandlerFactory.
-* A set of VFS-enabled Ant tasks.
+Apache Commons VFS presents local files, archives, and remote
+servers through one API. 2.10.0 requires Java 8. Upstream binds the
+http and https schemes to HttpClient 5, and splits the Ant tasks and
+the HDFS provider into their own modules.
 
-%package ant
-Summary:       Development files for Commons VFS
-Requires:      %{name} = %{version}-%{release}
-
-%description ant
-This package enables support for the Commons VFS ant tasks.
-
-%package examples
-Summary:       Commons VFS Examples
-Requires:      %{name} = %{version}-%{release}
-
-%description examples
-VFS is a Virtual File System library - Examples.
-
-%package javadoc
-Summary:       Javadoc for %{name}
-
-%description javadoc
-This package contains javadoc for %{name}.
+This package ships the core jar. The providers that compile against
+system jars stay: local, zip, jar, gzip, tar, bzip2, ftp, ftps, http4,
+http4s, ram, res, and temporary. SFTP needs JSch, and the HttpClient 3
+and HttpClient 5 providers need libraries that are not packaged, so
+those sources are left out. providers.xml still skips them when the
+classes are absent. The default URL provider encodes paths with VFS
+URIUtils instead of commons-httpclient. Ant tasks, examples,
+Jackrabbit WebDAV, and HDFS are not built. Tests are skipped. The
+automatic module name is org.apache.commons.vfs2.
 
 %prep
-%setup -q -n %{short_name}-%{version}
-perl -pi -e 's/\r$//g;' *.txt
+%autosetup -n commons-vfs-rel-commons-vfs-%{version}
+python - <<'PY'
+import shutil
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
-# Remove unused dependencies
-%pom_remove_dep :maven-scm-api
-%pom_remove_dep :maven-scm-provider-svnexe
-# Remove not available module
-%pom_remove_dep :commons-vfs-sandbox
-# Disable unwanted module
-%pom_disable_module dist
+for gradle in Path(".").rglob("*.gradle"):
+    gradle.unlink()
+for extra in (Path("gradlew"), Path("gradlew.bat")):
+    if extra.is_file():
+        extra.unlink()
+if Path("gradle").is_dir():
+    shutil.rmtree(Path("gradle"))
 
-# Fix plugin configuration
-%pom_xpath_inject "pom:project/pom:reporting/pom:plugins/pom:plugin[pom:artifactId='maven-javadoc-plugin']/pom:configuration" "
-<excludePackageNames>*.webdav.*</excludePackageNames>"
-# Fix ant gId
-%pom_xpath_set "pom:project/pom:dependencyManagement/pom:dependencies/pom:dependency[pom:artifactId='ant']/pom:groupId" "
-org.apache.ant"
+provider = Path("commons-vfs2/src/main/java/org/apache/commons/vfs2/provider")
+for name in ("sftp", "http", "https", "http5", "http5s"):
+    path = provider / name
+    if not path.is_dir():
+        raise SystemExit("missing provider " + name)
+    shutil.rmtree(path)
 
-%pom_xpath_set "pom:project/pom:dependencies/pom:dependency[pom:artifactId='ant']/pom:groupId" "
-org.apache.ant" core
+url_name = provider / "URLFileName.java"
+text = url_name.read_text(encoding="utf-8")
+text = text.replace("import org.apache.commons.httpclient.URIException;\n", "")
+text = text.replace(
+    "import org.apache.commons.httpclient.util.URIUtil;\n",
+    "import org.apache.commons.vfs2.util.URIUtils;\n",
+)
+text = text.replace("URIUtil.encodePath", "URIUtils.encodePath")
+text = text.replace("throws URIException, FileSystemException", "throws FileSystemException")
+text = text.replace("throws FileSystemException, URIException", "throws FileSystemException")
+text = "\n".join(line for line in text.splitlines() if "URIException" not in line) + "\n"
+if "org.apache.commons.httpclient" in text or "URIUtil.encodePath" in text:
+    raise SystemExit("URLFileName still imports httpclient")
+if "import org.apache.commons.vfs2.util.URIUtils;" not in text:
+    raise SystemExit("URIUtils import missing")
+url_name.write_text(text, encoding="utf-8")
 
-# Remove unwanted dependency
-%pom_remove_dep :jackrabbit-webdav core
+tasks = Path("commons-vfs2/src/main/resources/org/apache/commons/vfs2/tasks")
+if tasks.is_dir():
+    shutil.rmtree(tasks)
 
-# Disable jackrabbit-webdav support
-%pom_add_plugin org.apache.maven.plugins:maven-compiler-plugin core "
-<executions>
-  <execution>
-    <id>default-compile</id>
-    <phase>compile</phase>
-    <configuration>
-      <excludes>
-       <exclude>**/webdav/*</exclude>
-      </excludes>
-    </configuration>
-    <goals>
-      <goal>compile</goal>
-    </goals>
-  </execution>
-  <execution>
-    <id>default-testCompile</id>
-    <phase>test-compile</phase>
-    <configuration>
-      <testExcludes>
-       <exclude>**/webdav/test/*</exclude>
-      </testExcludes>
-    </configuration>
-    <goals>
-      <goal>testCompile</goal>
-    </goals>
-  </execution>
-</executions>"
+java_root = Path("commons-vfs2/src/main/java")
+files = list(java_root.rglob("*.java"))
+if len(files) != 271:
+    raise SystemExit("unexpected java file count " + str(len(files)))
+forbidden = (
+    "org.apache.commons.httpclient",
+    "org.apache.hc.",
+    "com.jcraft.jsch",
+    "org.apache.hadoop",
+    "org.apache.jackrabbit",
+)
+for source in files:
+    for line in source.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("import "):
+            continue
+        for needle in forbidden:
+            if needle in stripped:
+                raise SystemExit(needle + " remains in " + str(source))
 
-rm -rf core/src/main/java/org/apache/commons/vfs2/provider/webdav
-rm -rf core/src/test/java/org/apache/commons/vfs2/provider/webdav
-sed -i 's|"webdav",||' core/src/test/java/org/apache/commons/vfs2/util/DelegatingFileSystemOptionsBuilderTest.java
+Path("src/main").mkdir(parents=True)
+shutil.move(str(java_root), "src/main/java")
+shutil.move("commons-vfs2/src/main/resources", "src/main/resources")
+for name in (
+    "commons-vfs2",
+    "commons-vfs2-ant",
+    "commons-vfs2-bom",
+    "commons-vfs2-distribution",
+    "commons-vfs2-examples",
+    "commons-vfs2-hdfs",
+    "commons-vfs2-jackrabbit1",
+    "commons-vfs2-jackrabbit2",
+    "commons-vfs2-sandbox",
+):
+    shutil.rmtree(name)
 
-rm -r core/src/test/java/org/apache/commons/vfs2/provider/ram/test/CustomRamProviderTest.java
+providers = Path("src/main/resources/org/apache/commons/vfs2/impl/providers.xml").read_text(encoding="utf-8")
+for needle in (
+    "com.jcraft.jsch.JSch",
+    "org.apache.hc.client5.http.classic.HttpClient",
+    "org.apache.commons.httpclient.HttpClient",
+    "org.apache.http.client.HttpClient",
+):
+    if needle not in providers:
+        raise SystemExit("providers.xml missing " + needle)
 
-# not really needed
-%pom_remove_plugin :maven-checkstyle-plugin
-%pom_remove_plugin :commons-build-plugin
-%pom_remove_plugin :findbugs-maven-plugin
+NS = "http://maven.apache.org/POM/4.0.0"
+ET.register_namespace("", NS)
 
-# Fix installation directory and symlink
-%mvn_file :%{short_name}2 %{name}
-%mvn_file :%{short_name}2 %{name}2
-%mvn_file :%{short_name}2 %{short_name}
-%mvn_file :%{short_name}2 %{short_name}2
-%mvn_file :%{short_name}2-examples %{name}-examples
-%mvn_file :%{short_name}2-examples %{name}2-examples
-%mvn_file :%{short_name}2-examples %{short_name}-examples
-%mvn_file :%{short_name}2-examples %{short_name}2-examples
+def tag(name):
+    return "{" + NS + "}" + name
 
-%mvn_alias :commons-vfs2 "org.apache.commons:%{short_name}" "%{short_name}:%{short_name}"
-%mvn_alias :commons-vfs2-examples "org.apache.commons:%{short_name}-examples" "%{short_name}:%{short_name}-examples"
+def add(parent, name, value):
+    node = ET.SubElement(parent, tag(name))
+    node.text = value
+    return node
 
-# main package wins parent POM
-%mvn_package ":commons-vfs2-project" commons-vfs2
+def dep(parent, group, artifact, version, optional=False):
+    node = ET.SubElement(parent, tag("dependency"))
+    add(node, "groupId", group)
+    add(node, "artifactId", artifact)
+    add(node, "version", version)
+    if optional:
+        add(node, "optional", "true")
+    return node
 
-# cb - seems to break the build with xmvn
-find . -name site.xml -exec rm -rf {} \;
+root = ET.Element(tag("project"))
+add(root, "modelVersion", "4.0.0")
+add(root, "groupId", "org.apache.commons")
+add(root, "artifactId", "commons-vfs2")
+add(root, "version", "%{version}")
+add(root, "name", "Apache Commons VFS")
+props = ET.SubElement(root, tag("properties"))
+add(props, "maven.compiler.release", "8")
+deps = ET.SubElement(root, tag("dependencies"))
+dep(deps, "commons-logging", "commons-logging", "1.4.0")
+dep(deps, "org.apache.commons", "commons-lang3", "3.21.0")
+dep(deps, "commons-io", "commons-io", "2.22.0")
+dep(deps, "org.apache.commons", "commons-collections4", "4.6.0")
+dep(deps, "commons-net", "commons-net", "3.13.0", optional=True)
+dep(deps, "org.apache.commons", "commons-compress", "1.28.0", optional=True)
+dep(deps, "org.apache.httpcomponents", "httpclient", "4.5.14", optional=True)
+ET.ElementTree(root).write("pom.xml", encoding="utf-8", xml_declaration=True)
 
-%build
-%mvn_build -s
+pom = Path("pom.xml").read_text(encoding="utf-8")
+for needle in (
+    "<artifactId>commons-vfs2</artifactId>",
+    "<maven.compiler.release>8</maven.compiler.release>",
+    "<artifactId>commons-collections4</artifactId>",
+    "<artifactId>commons-net</artifactId>",
+    "<artifactId>commons-compress</artifactId>",
+    "<artifactId>httpclient</artifactId>",
+):
+    if needle not in pom:
+        raise SystemExit("pom missing " + needle)
+for needle in ("commons-httpclient", "httpclient5", "httpcore5", "jsch", "<modules>"):
+    if needle in pom:
+        raise SystemExit("pom still contains " + needle)
+poms = [item for item in Path(".").rglob("pom.xml")]
+if len(poms) != 1:
+    raise SystemExit("expected one pom, found " + str(len(poms)))
+if list(Path("src/main/java").rglob("*.java")) != files and len(list(Path("src/main/java").rglob("*.java"))) != 271:
+    raise SystemExit("moved java tree has the wrong count")
+PY
 
-%install
-%mvn_install
+%build -a
+cat > manifest-addition <<'EOF'
+Automatic-Module-Name: org.apache.commons.vfs2
+EOF
+jar ufm target/commons-vfs2-%{version}.jar manifest-addition
+java --module-path target/commons-vfs2-%{version}.jar --describe-module org.apache.commons.vfs2 > module-describe.txt
+grep -q '^org.apache.commons.vfs2 automatic' module-describe.txt || { cat module-describe.txt; exit 1; }
 
-mkdir -p %{buildroot}%{_sysconfdir}/ant.d
-echo "ant commons-logging %{short_name}" > %{short_name}
-install -p -m 644 %{short_name} %{buildroot}%{_sysconfdir}/ant.d/%{short_name}
-
-%files -f .mfiles-commons-vfs2
-%doc LICENSE.txt NOTICE.txt README.txt RELEASE-NOTES.txt
-
-%files examples -f .mfiles-commons-vfs2-examples
-
-%files javadoc -f .mfiles-javadoc
-%doc LICENSE.txt NOTICE.txt
-
-%files ant
-%config %{_sysconfdir}/ant.d/%{short_name}
-
-%changelog
-* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0-11
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
-
-* Fri Jun 28 2013 gil cattaneo <puntogil@libero.it> 2.0-10
-- used pom_xpath_set macro
-
-* Fri Jun 28 2013 gil cattaneo <puntogil@libero.it> 2.0-9
-- swith to pom macros
-- packaged in /usr/share/java instead of /usr/share/java/apache-commons-vfs
-
-* Fri Jun 28 2013 Michal Srb <msrb@redhat.com> - 2.0-8
-- Fix directory ownership
-
-* Thu Jun 27 2013 Michal Srb <msrb@redhat.com> - 2.0-7
-- Build with XMvn
-- Do not ignore test failures
-- Fix BR
-
-* Wed Feb 13 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0-6
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
-
-* Wed Feb 06 2013 Java SIG <java-devel@lists.fedoraproject.org> - 2.0-5
-- Update for https://fedoraproject.org/wiki/Fedora_19_Maven_Rebuild
-- Replace maven BuildRequires with maven-local
-
-* Wed Aug  1 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 2.0-4
-- Rebuild against javamail
-
-* Wed Jul 18 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0-3
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
-
-* Mon Jun 18 2012 gil cattaneo <puntogil@libero.it> 2.0-2
-- add subpackage ant
-- install NOTICE.txt in javadocs subpackage
-
-* Mon May 14 2012 gil cattaneo <puntogil@libero.it> 2.0-1
-- initial rpm
+%files -f .mfiles
+%doc LICENSE.txt NOTICE.txt README.md RELEASE-NOTES.txt

@@ -1,2 +1,4 @@
 sources:
+  commons-vfs-2.10.0.tar.gz: ed40227b16e9f6d4dcdacf9ada0bf82266be41ff
+removed_sources:
   commons-vfs-2.0-src.tar.gz: 4883af77f631662c6565857bcf8e2d08de6fcd47
