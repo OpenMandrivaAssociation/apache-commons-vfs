@@ -198,7 +198,9 @@ Automatic-Module-Name: org.apache.commons.vfs2
 EOF
 jar ufm target/commons-vfs2-%{version}.jar manifest-addition
 java --module-path target/commons-vfs2-%{version}.jar --describe-module org.apache.commons.vfs2 > module-describe.txt
-grep -q '^org.apache.commons.vfs2 automatic' module-describe.txt || { cat module-describe.txt; exit 1; }
+# A versioned jar prints "name@version ... automatic", not "name automatic".
+grep -q '^org.apache.commons.vfs2' module-describe.txt || { cat module-describe.txt; exit 1; }
+grep -q ' automatic$' module-describe.txt || { cat module-describe.txt; exit 1; }
 
 %files -f .mfiles
 %doc LICENSE.txt NOTICE.txt README.md RELEASE-NOTES.txt
